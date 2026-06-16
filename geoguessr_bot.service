@@ -1,0 +1,29 @@
+[Unit]
+Description=GeoGuessr Discord Stats Bot
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=damian
+Group=damian
+WorkingDirectory=/home/damian/DiscordBot
+ExecStart=/home/damian/DiscordBot/venv/bin/python bot.py
+Restart=always
+RestartSec=10
+Environment=PYTHONUNBUFFERED=1
+
+# Sicherheitseinstellungen
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/home/damian/DiscordBot/data
+PrivateTmp=yes
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=geoguessr-bot
+
+[Install]
+WantedBy=multi-user.target

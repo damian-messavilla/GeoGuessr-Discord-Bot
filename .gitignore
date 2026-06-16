@@ -1,0 +1,30 @@
+# Umgebungsvariablen
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+venv/
+.venv/
+
+# Datenbank
+data/*.db
+data/*.db-journal
+data/*.db-wal
+
+# Temporäre Dateien
+*.png
+*.tmp
+tmp/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
