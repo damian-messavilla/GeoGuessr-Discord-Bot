@@ -423,22 +423,22 @@ def _extract_elo(player: dict) -> tuple[int | None, int | None, int | None]:
     Returns:
         Tuple ``(elo_before, elo_after, elo_change)``.
     """
-    # Pfad 1: progressChange.rating (bevorzugt – echte Werte)
+    # Pfad 1: progressChange.rankedSystemProgress
     progress = player.get("progressChange", {})
     if isinstance(progress, dict):
-        rating = progress.get("rating", {})
-        if isinstance(rating, dict):
-            before = rating.get("ratingBefore")
-            after = rating.get("ratingAfter")
+        ranked = progress.get("rankedSystemProgress", {})
+        if isinstance(ranked, dict):
+            # Bevorzuge gameModeRatingBefore/After falls vorhanden (für Duels genauer)
+            before = ranked.get("gameModeRatingBefore")
+            after = ranked.get("gameModeRatingAfter")
+            if before is None or after is None:
+                before = ranked.get("ratingBefore")
+                after = ranked.get("ratingAfter")
             if before is not None or after is not None:
-                change = rating.get("ratingChange")
-                return (
-                    _safe_int(before),
-                    _safe_int(after),
-                    _safe_int(change),
-                )
+                return _safe_int(before), _safe_int(after), None
 
-    # Pfad 2: rating direkt am Spieler
+    # Pfad 2: rating direkt am Spieler (alte API-Versionen)
+    rating_direct = player.get("rating", {})
     rating_direct = player.get("rating", {})
     if isinstance(rating_direct, dict):
         before = rating_direct.get("ratingBefore")
@@ -488,7 +488,17 @@ def _determine_result(
 
     opponent_idx = 1 - user_team_idx if len(teams) == 2 else None
 
-    # Methode 1: Explizites 'result'-Feld pro Team
+    # Methode 1: result.winningTeamId (Zuverlässigste Methode)
+    res_obj = duel_data.get("result", {})
+    if isinstance(res_obj, dict):
+        winning_team_id = res_obj.get("winningTeamId")
+        if winning_team_id:
+            user_team_id = teams[user_team_idx].get("id")
+            if user_team_id == winning_team_id:
+                return "win"
+            return "loss"
+
+    # Methode 2: Explizites 'result'-Feld pro Team
     user_result = teams[user_team_idx].get("result")
     if user_result is not None:
         result_str = str(user_result).lower()
@@ -496,10 +506,8 @@ def _determine_result(
             return "win"
         if "loss" in result_str or "lose" in result_str or result_str == "2":
             return "loss"
-        if "draw" in result_str or "tie" in result_str or result_str == "0":
-            return "draw"
 
-    # Methode 2: Verbleibende Leben / Gesundheit vergleichen
+    # Methode 3: Verbleibende Leben / Gesundheit vergleichen
     if opponent_idx is not None:
         user_health = teams[user_team_idx].get("health", teams[user_team_idx].get("lives"))
         opp_health = teams[opponent_idx].get("health", teams[opponent_idx].get("lives"))
@@ -507,29 +515,8 @@ def _determine_result(
         if user_health is not None and opp_health is not None:
             if user_health > opp_health:
                 return "win"
-            if user_health < opp_health:
+            if user_health <= opp_health:
                 return "loss"
-            return "draw"
-
-    # Methode 3: Top-Level gameResult
-    game_result = duel_data.get("gameResult")
-    if game_result is not None:
-        gr_str = str(game_result).lower()
-        if "draw" in gr_str or "tie" in gr_str:
-            return "draw"
-        # Gewinner-Team-Index prüfen
-        winner_idx = duel_data.get("winnerTeamIndex", duel_data.get("winningTeamIndex"))
-        if winner_idx is not None:
-            return "win" if winner_idx == user_team_idx else "loss"
-
-    # Methode 4: Direkt den Winner-Index prüfen (Fallback)
-    winner_idx = duel_data.get("winnerTeamIndex", duel_data.get("winningTeamIndex"))
-    if winner_idx is not None:
-        if winner_idx == user_team_idx:
-            return "win"
-        if winner_idx == -1:
-            return "draw"
-        return "loss"
 
     log.warning(
         "Spielergebnis konnte nicht bestimmt werden – "

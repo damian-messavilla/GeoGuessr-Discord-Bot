@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+import zoneinfo
 from typing import TYPE_CHECKING
 
 import discord
@@ -51,16 +52,17 @@ def _build_recent_table(games: list[dict], display_name: str) -> str:
 
     rows: list[str] = []
     for game in games:
-        # Datum formatieren: DD.MM. HH:MM
         played_at = game.get("played_at", "")
         try:
-            dt = datetime.fromisoformat(played_at)
+            clean_time = played_at.replace("Z", "+00:00")
+            dt = datetime.fromisoformat(clean_time)
+            dt = dt.astimezone(zoneinfo.ZoneInfo("Europe/Berlin"))
             date_str = dt.strftime("%d.%m. %H:%M")
-        except (ValueError, TypeError):
+        except Exception:
             date_str = played_at[:12] if played_at else "???"
         date_str = date_str.ljust(12)
 
-        mode = _truncate(game.get("mode", "?"), 10)
+        mode = _truncate(game.get("game_mode", "?"), 10)
         result = _format_result_icon(game.get("result"))
         elo = _format_elo_change(game.get("elo_change")).ljust(8)
 
@@ -89,14 +91,18 @@ class Stats(commands.Cog):
         name="recent",
         description="Zeige die letzten Spiele eines Nutzers an.",
     )
-    @app_commands.describe(user="Der Nutzer (Standard: du selbst)")
+    @app_commands.describe(
+        user="Der Nutzer (Standard: du selbst)",
+        count="Anzahl der Spiele (Standard: 5, Max: 20)",
+    )
     @app_commands.guilds(GUILD_ID)
     async def recent(
         self,
         interaction: discord.Interaction,
         user: discord.Member | None = None,
+        count: app_commands.Range[int, 1, 20] = 5,
     ) -> None:
-        """Zeigt die letzten 5 Spiele als formatierte Tabelle an."""
+        """Zeigt die letzten Spiele als formatierte Tabelle an."""
 
         target = user or interaction.user
 
@@ -108,7 +114,7 @@ class Stats(commands.Cog):
             )
             return
 
-        games = await self.bot.db.get_recent_games(target.id, limit=5)
+        games = await self.bot.db.get_recent_games(target.id, limit=count)
         if not games:
             await interaction.response.send_message(
                 "Keine Spiele gefunden.",
