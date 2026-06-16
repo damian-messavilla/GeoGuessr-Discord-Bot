@@ -19,11 +19,17 @@ GUILD_ID = discord.Object(id=1516349812566659155)
 
 def _format_result_icon(result: str | None) -> str:
     """Gibt das passende Emoji für ein Spielergebnis zurück."""
-    if result and result.lower() == "win":
-        return "🏆 Win "
-    if result and result.lower() == "loss":
-        return "❌ Loss"
-    return "➖ Draw"
+    if result:
+        res = result.lower()
+        if res == "win":
+            return "🏆 Win "
+        if res == "loss":
+            return "❌ Loss"
+        if res == "draw":
+            return "➖ Draw"
+        if res in ("completed", "unknown"):
+            return "✅ Done"
+    return "❓ Unk "
 
 
 def _format_elo_change(elo_change: int | None) -> str:
@@ -92,15 +98,15 @@ class Stats(commands.Cog):
         description="Zeige die letzten Spiele eines Nutzers an.",
     )
     @app_commands.describe(
-        user="Der Nutzer (Standard: du selbst)",
         count="Anzahl der Spiele (Standard: 5, Max: 20)",
+        user="Der Nutzer (Standard: du selbst)",
     )
     @app_commands.guilds(GUILD_ID)
     async def recent(
         self,
         interaction: discord.Interaction,
-        user: discord.Member | None = None,
         count: app_commands.Range[int, 1, 20] = 5,
+        user: discord.Member | None = None,
     ) -> None:
         """Zeigt die letzten Spiele als formatierte Tabelle an."""
 
