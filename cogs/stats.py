@@ -185,6 +185,92 @@ class Stats(commands.Cog):
 
         await interaction.response.send_message(embed=embed)
 
+    # ------------------------------------------------------------------
+    # /update — Spieldaten manuell aktualisieren
+    # ------------------------------------------------------------------
+    @app_commands.command(
+        name="update",
+        description="Aktualisiere deine GeoGuessr-Spieldaten manuell.",
+    )
+    @app_commands.guilds(GUILD_ID)
+    async def update(self, interaction: discord.Interaction) -> None:
+        """Ruft die GeoGuessr-API manuell ab, um neue Spiele zu finden."""
+
+        player = await self.bot.db.get_player(interaction.user.id)
+        if not player:
+            await interaction.response.send_message(
+                "Dieser Nutzer ist nicht verknüpft. Nutze `/link` zuerst.",
+                ephemeral=True,
+            )
+            return
+
+        await interaction.response.defer()
+
+        try:
+            import json
+            from geoguessr_api import parse_feed_entries, process_duel_result
+
+            feed = await self.bot.api.get_feed(count=50)
+            if not feed:
+                await interaction.followup.send("⚠️ Konnte den Aktivitäts-Feed nicht abrufen.")
+                return
+
+            game_entries = parse_feed_entries(feed)
+            new_games = 0
+            geoguessr_id = player["geoguessr_id"]
+
+            for entry in game_entries:
+                game_id = entry["game_id"]
+
+                # Check ob das Spiel schon existiert
+                if await self.bot.db.game_exists(game_id):
+                    continue
+
+                if entry["competitive_mode"]:
+                    try:
+                        result = await process_duel_result(
+                            self.bot.api, game_id, geoguessr_id
+                        )
+                    except Exception:
+                        result = {
+                            "result": "unknown",
+                            "elo_before": None,
+                            "elo_after": None,
+                            "elo_change": None,
+                            "raw_data": {},
+                        }
+                else:
+                    result = {
+                        "result": "completed",
+                        "elo_before": None,
+                        "elo_after": None,
+                        "elo_change": None,
+                        "raw_data": {},
+                    }
+
+                inserted = await self.bot.db.add_game(
+                    discord_id=interaction.user.id,
+                    game_id=game_id,
+                    played_at=entry["time"],
+                    game_mode=entry["game_mode"],
+                    competitive_mode=entry.get("competitive_mode"),
+                    result=result["result"],
+                    elo_before=result.get("elo_before"),
+                    elo_after=result.get("elo_after"),
+                    elo_change=result.get("elo_change"),
+                    raw_data=json.dumps(result.get("raw_data", {})),
+                )
+                if inserted:
+                    new_games += 1
+
+            if new_games > 0:
+                await interaction.followup.send(f"✅ Update erfolgreich! **{new_games} neue Spiele** gespeichert.")
+            else:
+                await interaction.followup.send("🔄 Alles auf dem neuesten Stand. Keine neuen Spiele gefunden.")
+
+        except Exception as e:
+            await interaction.followup.send(f"❌ Fehler beim Aktualisieren: {e}")
+
 
 async def setup(bot: Bot) -> None:
     """Lädt den Stats-Cog in den Bot."""
