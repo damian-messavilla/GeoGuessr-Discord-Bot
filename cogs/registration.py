@@ -178,9 +178,20 @@ class Registration(commands.Cog):
             value=target.mention,
             inline=True,
         )
+        # Nickname aktualisieren falls unbekannt
+        nick = player.get("geoguessr_nick")
+        if not nick:
+            try:
+                profile = await self.bot.api.get_profile(player["geoguessr_id"])
+                nick = profile.get("user", {}).get("nick") or profile.get("nick") or profile.get("name")
+                if nick:
+                    await self.bot.db.add_player(target.id, player["geoguessr_id"], nick)
+            except Exception:
+                pass
+
         embed.add_field(
             name="GeoGuessr Nick",
-            value=player.get("nick") or "*unbekannt*",
+            value=nick or "*unbekannt*",
             inline=True,
         )
         embed.add_field(

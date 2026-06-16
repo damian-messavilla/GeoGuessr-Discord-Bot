@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import os
 from datetime import datetime, timedelta, timezone
 from typing import TYPE_CHECKING
@@ -98,7 +99,7 @@ class Charts(commands.Cog):
 
         chart_path: str | None = None
         try:
-            chart_path = await generate_activity_chart(games)
+            chart_path = await asyncio.to_thread(generate_activity_chart, games)
             file = discord.File(chart_path, filename="activity.png")
             await interaction.followup.send(file=file)
         finally:
@@ -136,7 +137,7 @@ class Charts(commands.Cog):
 
         chart_path: str | None = None
         try:
-            chart_path = await generate_elo_chart(games)
+            chart_path = await asyncio.to_thread(generate_elo_chart, games)
             file = discord.File(chart_path, filename="elo.png")
             await interaction.followup.send(file=file)
         finally:
@@ -174,7 +175,7 @@ class Charts(commands.Cog):
 
         chart_path: str | None = None
         try:
-            chart_path = await generate_winrate_chart(stats)
+            chart_path = await asyncio.to_thread(generate_winrate_chart, stats)
             file = discord.File(chart_path, filename="winrate.png")
             await interaction.followup.send(file=file)
         finally:
@@ -213,7 +214,7 @@ class Charts(commands.Cog):
 
         chart_path: str | None = None
         try:
-            chart_path = await generate_heatmap(games, current_year)
+            chart_path = await asyncio.to_thread(generate_heatmap, games, current_year)
             file = discord.File(chart_path, filename="heatmap.png")
             await interaction.followup.send(file=file)
         finally:

@@ -154,8 +154,8 @@ class Stats(commands.Cog):
             return
 
         # Gesamt-Statistik berechnen
-        total_wins = sum(s.get("wins", 0) for s in stats.values())
-        total_losses = sum(s.get("losses", 0) for s in stats.values())
+        total_wins = sum(s.get("wins", 0) for s in stats)
+        total_losses = sum(s.get("losses", 0) for s in stats)
         total_games = total_wins + total_losses
         total_pct = (total_wins / total_games * 100) if total_games > 0 else 0.0
 
@@ -170,9 +170,10 @@ class Stats(commands.Cog):
         embed.set_thumbnail(url=target.display_avatar.url)
 
         # Ein Feld pro Spielmodus
-        for mode, data in stats.items():
-            wins = data.get("wins", 0)
-            losses = data.get("losses", 0)
+        for s in stats:
+            mode = s.get("game_mode", "Unbekannt")
+            wins = s.get("wins", 0)
+            losses = s.get("losses", 0)
             games = wins + losses
             pct = (wins / games * 100) if games > 0 else 0.0
             bar = _build_progress_bar(pct / 100)
