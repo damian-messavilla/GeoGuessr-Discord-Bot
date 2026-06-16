@@ -43,8 +43,8 @@ class Registration(commands.Cog):
 
         # GeoGuessr-ID validieren und Nickname holen
         try:
-            stats = await self.bot.api.get_user_stats(geoguessr_id)
-            nick = stats.get("nick") or stats.get("name")
+            profile = await self.bot.api.get_profile(geoguessr_id)
+            nick = profile.get("user", {}).get("nick") or profile.get("nick") or profile.get("name")
         except Exception:
             # API-Fehler → trotzdem registrieren, aber Nutzer warnen
             warn_message = (

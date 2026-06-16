@@ -181,16 +181,16 @@ class GeoGuessrAPI:
         url = f"{_GAME_SERVER_URL}/duels/{game_id}"
         return await self._request("GET", url)
 
-    async def get_user_stats(self, user_id: str) -> dict:
-        """Ruft die Statistiken eines GeoGuessr-Nutzers ab.
+    async def get_profile(self, user_id: str) -> dict:
+        """Ruft das Profil eines GeoGuessr-Nutzers ab (inkl. Name).
 
         Args:
             user_id: GeoGuessr-Nutzer-ID.
 
         Returns:
-            Nutzer-Statistiken.
+            Nutzer-Profil.
         """
-        url = f"{_BASE_URL}/v3/users/{user_id}/stats"
+        url = f"{_BASE_URL}/v3/users/{user_id}"
         return await self._request("GET", url)
 
     async def get_ranked_rating(self) -> dict:
@@ -243,9 +243,20 @@ def parse_feed_entries(feed_data: dict) -> list[dict]:
             # Gruppierte Spiele – Payload ist eine Liste
             games = payload if isinstance(payload, list) else [payload]
             for game in games:
-                parsed = _parse_competitive_game(game, time_stamp)
-                if parsed:
-                    entries.append(parsed)
+                # game is e.g. {"type": 6, "payload": {"gameId": ...}}
+                inner_payload = game.get("payload")
+                if isinstance(inner_payload, str):
+                    try:
+                        inner_payload = json.loads(inner_payload)
+                    except Exception:
+                        continue
+                
+                if isinstance(inner_payload, dict):
+                    # time_stamp fallback
+                    game_time = game.get("time") or time_stamp
+                    parsed = _parse_competitive_game(inner_payload, game_time)
+                    if parsed:
+                        entries.append(parsed)
 
         elif entry_type == 6:
             # Einzelnes kompetitives Spiel
