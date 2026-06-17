@@ -231,6 +231,7 @@ class Stats(commands.Cog):
                 from geoguessr_api import _BASE_URL
                 friends_resp = await self.bot.api._request("GET", f"{_BASE_URL}/v4/feed/friends")
                 if friends_resp:
+                    # friends_resp ist ein dictionary
                     friends_entries = parse_feed_entries(friends_resp)
                     # Nur Party/TeamDuels übernehmen, der Rest ist im privaten Feed!
                     for entry in friends_entries:
@@ -263,9 +264,8 @@ class Stats(commands.Cog):
                         result = await process_duel_result(
                             self.bot.api, game_id, geoguessr_id
                         )
-                        # Überspringe Spiele aus dem Friends-Feed an denen der User nicht teilnahm
-                        if result.get("user_not_found"):
-                            continue
+                        # Wenn user_not_found, dann wird result="unknown" zurückgegeben
+                        # Wir speichern es trotzdem, damit es in /recent als "Done" erscheint!
                     except Exception:
                         result = {
                             "result": "unknown",
