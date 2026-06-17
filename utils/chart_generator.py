@@ -218,10 +218,10 @@ def generate_activity_chart(
             ax_main.scatter(
                 x, y,
                 color=COLOR_ACCENT,
-                s=50,
+                s=20,
                 zorder=4,
                 edgecolors=COLOR_TEXT,
-                linewidths=0.8,
+                linewidths=0.6,
             )
 
             # Fläche unter der Kurve mit Gradient
@@ -242,16 +242,13 @@ def generate_activity_chart(
             ax_main.yaxis.set_major_locator(mticker.MaxNLocator(integer=True))
             ax_main.set_ylim(bottom=0)
 
-        # X-Achsen-Beschriftung: Nur Mitternacht und 12:00 Uhr beschriften
+        # X-Achsen-Beschriftung: Nur den Start eines jeden Tages (Mitternacht) beschriften
         ticks = []
         labels = []
         for i, d in enumerate(date_range):
             if d.hour == 0:
                 ticks.append(i)
                 labels.append(f"{_german_weekday_short(d)} {d.strftime('%d.%m')}")
-            elif d.hour == 12:
-                ticks.append(i)
-                labels.append("12:00")
 
         ax_main.set_xticks(ticks)
         ax_main.set_xticklabels(labels, fontsize=9)
