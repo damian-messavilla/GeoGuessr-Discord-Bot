@@ -167,9 +167,12 @@ def generate_activity_chart(
         )
         fig.subplots_adjust(hspace=0.45)
 
-        # Zeitraum: letzte 7 Tage (einschließlich heute)
+        # Zeitraum: letzte 7 Tage (einschließlich heute) in 3-Stunden-Blöcken
         today = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
-        date_range = [today - timedelta(days=i) for i in range(6, -1, -1)]
+        start_date = today - timedelta(days=6)
+        
+        interval_hours = 3
+        date_range = [start_date + timedelta(hours=i) for i in range(0, 7 * 24, interval_hours)]
 
         # Daten parsen und filtern
         parsed_dates: list[datetime] = []
@@ -178,14 +181,15 @@ def generate_activity_chart(
             if dt is not None:
                 parsed_dates.append(dt)
 
-        # Spiele pro Tag zählen
-        counts_per_day = []
+        # Spiele pro Bin (3 Stunden) zählen
+        counts_per_bin = []
         for d in date_range:
+            bin_end = d + timedelta(hours=interval_hours)
             count = sum(
                 1 for dt in parsed_dates
-                if dt.date() == d.date()
+                if d <= dt < bin_end
             )
-            counts_per_day.append(count)
+            counts_per_bin.append(count)
 
         # Stunden-Verteilung (gesamte 7 Tage)
         start_of_range = date_range[0]
@@ -194,14 +198,14 @@ def generate_activity_chart(
             if dt >= start_of_range:
                 hour_counts[dt.hour] += 1
 
-        has_data = any(c > 0 for c in counts_per_day)
+        has_data = any(c > 0 for c in counts_per_bin)
 
         # --- Hauptdiagramm (Linie + Fläche) ---
         if not has_data:
             _draw_no_data(fig, ax_main)
         else:
             x = np.arange(len(date_range))
-            y = np.array(counts_per_day, dtype=float)
+            y = np.array(counts_per_bin, dtype=float)
 
             # Linie zeichnen
             ax_main.plot(
@@ -235,16 +239,21 @@ def generate_activity_chart(
                 zorder=1,
             )
 
-            # Y-Achse: nur ganzzahlige Ticks
             ax_main.yaxis.set_major_locator(mticker.MaxNLocator(integer=True))
             ax_main.set_ylim(bottom=0)
 
-        # X-Achsen-Beschriftung: 'Mo 16.06'
-        labels = [
-            f"{_german_weekday_short(d)} {d.strftime('%d.%m')}"
-            for d in date_range
-        ]
-        ax_main.set_xticks(range(len(date_range)))
+        # X-Achsen-Beschriftung: Nur Mitternacht und 12:00 Uhr beschriften
+        ticks = []
+        labels = []
+        for i, d in enumerate(date_range):
+            if d.hour == 0:
+                ticks.append(i)
+                labels.append(f"{_german_weekday_short(d)} {d.strftime('%d.%m')}")
+            elif d.hour == 12:
+                ticks.append(i)
+                labels.append("12:00")
+
+        ax_main.set_xticks(ticks)
         ax_main.set_xticklabels(labels, fontsize=9)
         ax_main.set_ylabel("Spiele")
         ax_main.set_title(
