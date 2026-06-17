@@ -224,11 +224,30 @@ class Stats(commands.Cog):
             from geoguessr_api import parse_feed_entries, process_duel_result
 
             feed = await self.bot.api.get_feed(count=50)
-            if not feed:
-                await interaction.followup.send("⚠️ Konnte den Aktivitäts-Feed nicht abrufen.")
-                return
+            game_entries = parse_feed_entries(feed) if feed else []
 
-            game_entries = parse_feed_entries(feed)
+            # Lade friends feed um Party Games (Host=Freund) zu erwischen
+            try:
+                from geoguessr_api import _BASE_URL
+                friends_resp = await self.bot.api._request("GET", f"{_BASE_URL}/v4/feed/friends")
+                if friends_resp:
+                    friends_entries = parse_feed_entries(friends_resp)
+                    # Nur Party/TeamDuels übernehmen, der Rest ist im privaten Feed!
+                    for entry in friends_entries:
+                        if entry.get("competitive_mode") in ("TeamDuels", "LiveChallenge"):
+                            game_entries.append(entry)
+            except Exception as e:
+                pass
+
+            # Duplikate entfernen (anhand game_id)
+            seen = set()
+            unique_entries = []
+            for e in game_entries:
+                if e["game_id"] not in seen:
+                    seen.add(e["game_id"])
+                    unique_entries.append(e)
+            game_entries = unique_entries
+
             new_games = 0
             geoguessr_id = player["geoguessr_id"]
 
@@ -244,6 +263,9 @@ class Stats(commands.Cog):
                         result = await process_duel_result(
                             self.bot.api, game_id, geoguessr_id
                         )
+                        # Überspringe Spiele aus dem Friends-Feed an denen der User nicht teilnahm
+                        if result.get("user_not_found"):
+                            continue
                     except Exception:
                         result = {
                             "result": "unknown",

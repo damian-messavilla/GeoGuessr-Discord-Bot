@@ -261,7 +261,7 @@ def parse_feed_entries(feed_data: dict) -> list[dict]:
                         parsed = _parse_competitive_game(inner_payload, game_time)
                     elif sub_type == 2:
                         parsed = _parse_challenge_game(inner_payload, game_time)
-                    elif sub_type == 9:
+                    elif sub_type in (9, 11):
                         parsed = _parse_party_game(inner_payload, game_time)
                     elif sub_type == 1:
                         parsed = _parse_standard_game(inner_payload, game_time)
@@ -276,7 +276,7 @@ def parse_feed_entries(feed_data: dict) -> list[dict]:
                 parsed = _parse_competitive_game(payload, time_stamp)
             elif entry_type == 2:
                 parsed = _parse_challenge_game(payload, time_stamp)
-            elif entry_type == 9:
+            elif entry_type in (9, 11):
                 parsed = _parse_party_game(payload, time_stamp)
             elif entry_type == 1:
                 # Nicht-kompetitives Spiel (Standardkarte)
@@ -434,6 +434,7 @@ async def process_duel_result(
             user_geoguessr_id,
             game_id,
         )
+        result_default["user_not_found"] = True
         return result_default
 
     # ── Elo-Daten extrahieren ────────────────────────────────────────────
