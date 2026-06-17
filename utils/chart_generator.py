@@ -85,6 +85,12 @@ def _parse_datetime(value: str | datetime | None) -> Optional[datetime]:
     if isinstance(value, datetime):
         return value
     try:
+        if isinstance(value, str):
+            # Für Diagramme reicht die Sekundengenauigkeit.
+            # Schneidet Mikrosekunden und Zeitzonen-Suffixe ab (z.B. .0, .000Z),
+            # da fromisoformat in älteren Python-Versionen damit Probleme hat.
+            if len(value) >= 19:
+                value = value[:19]
         return datetime.fromisoformat(value)
     except (ValueError, TypeError):
         logger.warning("Konnte Datum nicht parsen: %s", value)
