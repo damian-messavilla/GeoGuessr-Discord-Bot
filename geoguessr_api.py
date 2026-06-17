@@ -254,19 +254,34 @@ def parse_feed_entries(feed_data: dict) -> list[dict]:
                 if isinstance(inner_payload, dict):
                     # time_stamp fallback
                     game_time = game.get("time") or time_stamp
-                    parsed = _parse_competitive_game(inner_payload, game_time)
+                    sub_type = game.get("type")
+                    parsed = None
+
+                    if sub_type == 6:
+                        parsed = _parse_competitive_game(inner_payload, game_time)
+                    elif sub_type == 2:
+                        parsed = _parse_challenge_game(inner_payload, game_time)
+                    elif sub_type == 9:
+                        parsed = _parse_party_game(inner_payload, game_time)
+                    elif sub_type == 1:
+                        parsed = _parse_standard_game(inner_payload, game_time)
+
                     if parsed:
                         entries.append(parsed)
 
-        elif entry_type == 6:
-            # Einzelnes kompetitives Spiel
-            parsed = _parse_competitive_game(payload, time_stamp)
-            if parsed:
-                entries.append(parsed)
-
-        elif entry_type == 1:
-            # Nicht-kompetitives Spiel (Standardkarte)
-            parsed = _parse_standard_game(payload, time_stamp)
+        else:
+            parsed = None
+            if entry_type == 6:
+                # Einzelnes kompetitives Spiel
+                parsed = _parse_competitive_game(payload, time_stamp)
+            elif entry_type == 2:
+                parsed = _parse_challenge_game(payload, time_stamp)
+            elif entry_type == 9:
+                parsed = _parse_party_game(payload, time_stamp)
+            elif entry_type == 1:
+                # Nicht-kompetitives Spiel (Standardkarte)
+                parsed = _parse_standard_game(payload, time_stamp)
+                
             if parsed:
                 entries.append(parsed)
 
@@ -297,6 +312,36 @@ def _parse_competitive_game(
         "time": game.get("time") or fallback_time,
         "game_mode": game.get("gameMode", "unknown"),
         "competitive_mode": game.get("competitiveGameMode"),
+    }
+
+def _parse_challenge_game(
+    game: dict,
+    fallback_time: str | None,
+) -> dict | None:
+    game_id = game.get("challengeToken")
+    if not game_id:
+        return None
+    mode = "Daily Challenge" if game.get("isDailyChallenge") else "Challenge"
+    return {
+        "game_id": game_id,
+        "time": game.get("time") or fallback_time,
+        "game_mode": mode,
+        "competitive_mode": None,
+    }
+
+def _parse_party_game(
+    game: dict,
+    fallback_time: str | None,
+) -> dict | None:
+    game_id = game.get("gameId")
+    if not game_id:
+        return None
+    mode = game.get("gameMode", "LiveChallenge")
+    return {
+        "game_id": game_id,
+        "time": game.get("time") or fallback_time,
+        "game_mode": mode,
+        "competitive_mode": mode,
     }
 
 
